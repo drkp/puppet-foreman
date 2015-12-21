@@ -50,6 +50,7 @@ module Puppet::Parser::Functions
     raise Puppet::ParseError, "Foreman: Must supply a Hash to foreman(), not a #{args[0].class}" unless args[0].is_a? Hash
     args_hash     = args[0]
     item          = args_hash["item"]
+    item_id       = args_hash["item_id"]
     search        = args_hash["search"]
     per_page      = args_hash["per_page"]     || "20"
     use_tfmproxy  = args_hash["use_tfmproxy"] || false
@@ -63,9 +64,15 @@ module Puppet::Parser::Functions
     searchable_items = %w{ environments fact_values hosts hostgroups puppetclasses smart_proxies subnets }
     raise Puppet::ParseError, "Foreman: Invalid item to search on: #{item}, must be one of #{searchable_items.join(", ")}." unless searchable_items.include?(item)
     raise Puppet::ParseError, "Foreman: Invalid filter_result: #{filter_result}, must be a String or an Array" unless filter_result.is_a? String or filter_result.is_a? Array or filter_result.is_a? Hash or filter_result == false
+    raise Puppet::ParseError, "Foreman: cannot specify both search and item_id" if item_id and search
 
     begin
-      path = URI.escape("/api/#{item}?search=#{search}&per_page=#{per_page}")
+      if search
+          path = URI.escape("/api/#{item}?search=#{search}&per_page=#{per_page}")
+      else
+          path = URI.escape("/api/#{item}/#{item_id}")
+      end
+      uri = URI.parse(foreman_url)
 
       req = Net::HTTP::Get.new(path)
       req['Content-Type'] = 'application/json'
